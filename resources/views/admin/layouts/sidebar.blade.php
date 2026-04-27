@@ -17,7 +17,7 @@
     <a href="/admin-page" class="brand-link">
         <img src="{{ asset('admin/dist/img/logo.png') }}" alt="AdminLTE Logo" class="brand-image img-circle elevation-3"
             style="opacity: .8">
-        <span class="brand-text font-weight-light">AI Appointments</span>
+        <span class="brand-text font-weight-light">Booking AI</span>
     </a>
 
     <!-- Sidebar -->

@@ -10,7 +10,7 @@ class CallSummary extends Model
     use HasFactory;
 
     protected $fillable = [
-        'physio_id',
+        'user_id',
         'transcript',
         'summary',
         'recording_url',

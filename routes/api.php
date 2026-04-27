@@ -7,4 +7,4 @@ use Illuminate\Support\Facades\Route;
 
 
 //Route::post('/store-appointment', [AppointmentController::class, 'store'])->name('store-appointment');
-Route::post('/physio-assistant-calls', [AiAssistantController::class, 'physioAssistantEvent'])->name('physio-assistant-calls');
+Route::post('/assistant-calls', [AiAssistantController::class, 'physioAssistantEvent'])->name('assistant-calls');

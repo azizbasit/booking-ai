@@ -43,7 +43,7 @@ class AppointmentController extends Controller
         $content = $request->getContent();
         $data = json_decode($content, true);
 
-        $appointmentData = $data['message']['toolCalls'][0]['function']['arguments'];
+        $appointmentData = $data['message']['toolCalls'][0]['function']['arguments']; 
 
         // Convert date and time into correct format
         $formattedDate = Carbon::parse($appointmentData['appointment_date'])->format('Y-m-d');

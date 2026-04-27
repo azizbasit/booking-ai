@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use App\Models\CallSummary;
 use App\Models\PhoneNumber;
 use Illuminate\Support\Facades\Storage;
+use App\Models\User;
 
 
 class AiAssistantController extends Controller
@@ -347,7 +348,7 @@ EOD;
                 'arguments' => $args
             ]);
 
-            $physioId = $args['physio_id'] ?? null;
+           //$physioId = $args['physio_id'] ?? null;
             $date = $args['date'] ?? null;
             $timeSlot = $args['time_slot'] ?? null;
 
@@ -356,18 +357,18 @@ EOD;
             }
 
             // physio_check_availability
-            if ($functionName === 'physio_check_availability') {
+            if ($functionName === 'catering_check_availability') {
                 $toolCallId = $payload['message']['toolCalls'][0]['id'] ?? null;
-                $physioId = $args['physio_id'] ?? null;
+                //$physioId = $args['physio_id'] ?? null;
                 $date = $args['date'] ?? null;
 
                 $timeSlot = $args['time_slot'] ?? null;
 
                 // 1. Fetch physio's working hours
-                //$profile = AiAssistantsProfile::find($physioId);
-                $profile = AiAssistantsProfile::find($physioId);
-                if (!$profile || !$profile->working_hours_start || !$profile->working_hours_end) {
-                    $resultMsg = "Unable to determine working hours for this physiotherapist.";
+                $userId = $args['user_id'] ?? null;
+                $user = User::find($userId);
+                if (!$user || !$user->working_hours_start || !$user->working_hours_end) {
+                    $resultMsg = "Unable to determine working hours for this user.";
                     return response()->json([
                         "results" => [
                             [
@@ -379,8 +380,8 @@ EOD;
                 }
 
                 // 2. Generate all possible slots (1 hour slots, you can adjust interval)
-                $start = Carbon::createFromFormat('H:i', $profile->working_hours_start);
-                $end = Carbon::createFromFormat('H:i', $profile->working_hours_end);
+                $start = Carbon::createFromFormat('H:i', $user->working_hours_start);
+                $end = Carbon::createFromFormat('H:i', $user->working_hours_end);
                 $allSlots = [];
                 while ($start->lt($end)) {
                     $allSlots[] = $start->format('H:i');
@@ -391,7 +392,7 @@ EOD;
                 for ($i = 0; $i < 7; $i++) {
                     $checkDate = Carbon::parse($date)->addDays($i)->format('Y-m-d');
                     $bookedSlots = Appointment::where('appointment_date', $checkDate)
-                        ->where('user_id', $physioId)
+                        ->where('user_id', $userId)
                         ->pluck('appointment_slot')
                         ->toArray();
 
@@ -437,15 +438,15 @@ EOD;
             }
 
             // physio_book_appointment
-            if ($functionName === 'physio_book_appointment') {
+            if ($functionName === 'catering_book_appointment') {
                 $toolCallId = $payload['message']['toolCalls'][0]['id'] ?? null;
-                $physioId = $args['physio_id'] ?? null;
+                $userId = $args['user_id'] ?? null;
                 $date = $args['appointment_date'] ?? null;
                 $timeSlot = $args['time_slot'] ?? null;
                 $fullName = $args['full_name'] ?? null;
                 $phoneNumber = $args['phone_number'] ?? null;
                 $phoneNumber = preg_replace('/\D+/', '', $phoneNumber);
-                $serviceType = $args['service_type'] ?? 'any';
+                $serviceType = $args['service_type'] ?? 'pending';
                 $notes = $args['notes'] ?? 'this is note';
 
                 if ($timeSlot && preg_match('/AM|PM/i', $timeSlot)) {
@@ -454,7 +455,7 @@ EOD;
                 // Check if slot is already booked
                 $alreadyBooked = Appointment::where('appointment_date', $date)
                     ->where('appointment_slot', $timeSlot)
-                    ->where('user_id', $physioId)
+                    ->where('user_id', $userId)
                     ->exists();
 
                 Log::info("Already Booked Slots: $alreadyBooked");
@@ -477,14 +478,14 @@ EOD;
                 //$serviceType = $args['service_type'] ?? 'General Consultation';
                 // Create the appointment
                 $appointment = Appointment::create([
+                    'user_id' => $userId,
                     'full_name' => $fullName,
-                    'user_id' => $physioId,
                     'phone_number' => $phoneNumber,
-                    'service_type' => $serviceType,
                     'appointment_date' => $date,
                     'appointment_slot' => $timeSlot,
                     'start_time' => $startTime,
                     'end_time' => $endTime,
+                    'service_type' => $serviceType,
                     'status' => 'pending',
                     'notes' => $notes,
                 ]);
@@ -500,16 +501,16 @@ EOD;
                 ]);
             }
             // physio_cancel_appointment
-            if ($functionName === 'physio_cancel_appointment') {
+            if ($functionName === 'catering_cancel_event') {
                 $toolCallId = $payload['message']['toolCalls'][0]['id'] ?? null;
-                $physioId = $args['physio_id'] ?? null;
+                $userId = $args['user_id'] ?? null;
                 $date = $args['appointment_date'] ?? null;
                 $timeSlot = $args['time_slot'] ?? null;
                 $fullName = $args['full_name'] ?? null;
                 $phoneNumber = $args['phone_number'] ?? null;
 
                 // Check if the appointment exists
-                $appointment = Appointment::where('user_id', $physioId)
+                $appointment = Appointment::where('user_id', $userId)
                     ->where('appointment_date', $date)
                     ->where('appointment_slot', $timeSlot)
                     ->where('full_name', $fullName)
@@ -551,7 +552,7 @@ EOD;
         if ($messageType === 'end-of-call-report') {
             $msg = $payload['message'];
             $artifact = $msg['artifact'] ?? [];
-            $physioId = 'N/A';
+            $userId = 'N/A';
 
             // Log::info('physioAssistantEvent - End of Call Report', [
             //     'message' => $msg,
@@ -564,9 +565,9 @@ EOD;
                         isset($m['role']) &&
                         $m['role'] === 'system' &&
                         isset($m['message']) &&
-                        preg_match('/Physio ID:\s*([0-9]+)/i', $m['message'], $matches)
+                        preg_match('/User ID:\s*([0-9]+)/i', $m['message'], $matches)
                     ) {
-                        $physioId = $matches[1];
+                        $userId = $matches[1];
                         break;
                     }
                 }
@@ -610,7 +611,7 @@ EOD;
             }
 
             CallSummary::create([
-                'physio_id' => $physioId !== 'N/A' ? $physioId : null,
+                'user_id' => $userId !== 'N/A' ? $userId : null,
                 'transcript' => $msg['transcript'] ?? null,
                 'summary' => $msg['summary'] ?? ($msg['analysis']['summary'] ?? null),
                 'recording_url' => $recordingPath,

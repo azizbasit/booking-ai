@@ -24,6 +24,8 @@ class User extends Authenticatable
         'email',
         'phone_number',
         'password',
+        'working_hours_start',
+        'working_hours_end',
     ];
 
     /**
@@ -46,6 +48,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'working_hours_start' => 'string',
+            'working_hours_end' => 'string',
         ];
     }
 

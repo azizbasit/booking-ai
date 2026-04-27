@@ -1,4 +1,5 @@
 {
+    "name": "booking-ai",
     "private": true,
     "type": "module",
     "scripts": {

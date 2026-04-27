@@ -3,7 +3,7 @@
 @section('content')
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
-        <a class="navbar-brand" href="/"><b>Appointment</b>System</a>
+        <a class="navbar-brand" href="/"><b>Booking</b> AI</a>
         
         <div class="ml-auto">
             @if (Route::has('login'))
